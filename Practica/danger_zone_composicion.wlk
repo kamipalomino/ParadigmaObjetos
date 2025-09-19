@@ -1,46 +1,109 @@
-class Empleados {
-    // var property habilidades = [ ]
-        var property salud = 100
-        var property puesto 
-    
-   // method saludCritica() = puesto.saludCritica()
-    
-    method estoyIncapacitado() = salud < puesto.saludCritica()
-    
-    method recibirDanio(mision) = salud -= mision.peligrosidad()
-    
-    method sobreviviAlaMision() = salud > 0
-    
-    method puedoUsarHabilidad(habilidad) = (!self.estoyIncapacitado()) && (puesto.habilidades().contains(habilidad))
-    
-    method recompensaDeMision(mision) = puesto.recompensaDeMision(mision)
-}
-
-object espia {
-    var property habilidades = ["disparar", "correr"]
-    method saludCritica() = 15
-    method recompensaDeMision(mision) = if(mision.completada(self)) habilidades.add(mision.habilidadesRequeridas())
-}
-
-object oficinista {
-    var property habilidades = ["nadar"]
-    var property estrella = 0
-    //var property puesto = self
-    var property salud = 100
-    
-    method estrella(suma) = estrella += suma 
-    method saludCritica() = 40 - 5 * estrella 
-    method recompensaDeMision(mision) = if(mision.completada(self)) self.estrella(1) else self.estrella()
-}
-
-// method cambiarPuesto() = if (self.estrella() >= 3) self.puesto(new Empleado(puesto = espia())) else self.puesto()
-
-class Mision {
-  var property habilidadesRequeridas = ["nadar", "correr"]
-  var property peligrosidad = 30
-  
-  method completada(empleado) = true
-  
-  method tienenHabilidades(empleados) =
-        self.habilidadesRequeridas().forEach({hab => empleados.puedoUsarHabilidad(hab)})
-}
+class Empleados{
+
+        var property misiones = #{ }
+        var property salud = 100
+        
+        var property puesto 
+    
+
+    method estoyIncapacitado() = salud < puesto.saludCritica()
+
+    method recibirDanio(peligrosidad) { salud -= peligrosidad}    
+
+    method sobreviviAlaMision() = salud > 0   
+
+    method puedoUsarHabilidad(habilidad) = (!self.estoyIncapacitado()) && (puesto.habilidades().contains(habilidad))    
+
+    method recompensaDeMision(habil) = puesto.recompensaDeMision(habil)
+
+    
+    method registrar(mision) = self.misiones().add(mision)
+    
+    method completarMision(mision, hab){
+        if(mision.completada(self) && self.sobreviviAlaMision()){
+            self.recompensaDeMision(hab)
+            self.registrar(mision) 
+        }
+        return misiones 
+    }
+    method cambiarPuesto(unPuesto) {
+      if (puesto.puedoCambiar()) { self.puesto(unPuesto) }
+      throw new Exception(message = "No sé puede cambiar de puesto por ahora ")
+      
+    }
+    
+}
+
+
+
+object espia {
+
+    var property habilidades = ["disparar", "correr"]
+    const property puedoCambiar = false 
+    
+    method saludCritica() = 15
+
+    method recompensaDeMision(habil) = habilidades.add(habil)
+}
+
+
+
+object oficinista {
+
+    var property habilidades = ["nadar"]
+
+    var property estrella = 0
+
+    var property salud = 100
+
+    method puedoCambiar() = self.estrella() >= 3
+
+    method estrellas(suma) {estrella += suma }
+
+    method saludCritica() = 40 - 5 * estrella 
+
+    method recompensaDeMision(habil) = self.estrellas(1)
+}
+
+
+class Jefe inherits Empleados() {
+    var property subordinados
+    
+    override method puedoUsarHabilidad(habilidad) = self.subordinadoUsaHabilidad(habilidad) || super(habilidad)
+    
+    method subordinadoUsaHabilidad(habilidad) = self.subordinados().any({empleado => empleado.puedoUsarHabilidad(habilidad)})
+    
+    override method recibirDanio(peligrosidad){
+        const danio = peligrosidad / 3
+        self.subordinados().forEach{e => e.recibirDanio(danio)}
+    }
+}
+
+class Mision {
+
+  var property habilidadesRequeridas = ["nadar", "correr"]
+  var property peligrosidad = 30
+
+  method completada(empleados) {
+     empleados.recibirDanio(peligrosidad)
+     return self.tienenHabilidades(empleados)
+  }
+
+  method tienenHabilidades(empleados) {
+
+       self.habilidadesRequeridas().all({hab => empleados.puedoUsarHabilidad(hab)})
+  } 
+}
+
+
+
+const uno = new Empleados(puesto = espia)
+const dos = new Empleados(puesto = oficinista)
+const primer = new Mision(habilidadesRequeridas = ["correr"])
+const segunda = new Mision()
+const jefe = new Jefe(subordinados = #{uno, dos}, puesto = espia)
+
+// jefe.subordinados().forEach{e => e.salud()}
+// uno.completarMision(primer, "nadar")
+//dos.completarMision(segunda, "")
+//dos.puesto().habilidades().add("correr")
